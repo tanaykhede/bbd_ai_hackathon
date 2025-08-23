@@ -5,3 +5,6 @@ from workflow.doa.utils import save
 
 def create_process_data_type(db: Session, process_data_type: schemas.ProcessDataTypeCreate, usrid: str) -> models.ProcessDataType:
     return save(db, models.ProcessDataType(**process_data_type.dict(), usrid=usrid))
+
+def list_all_process_data_types(db: Session) -> list[models.ProcessDataType]:
+    return db.query(models.ProcessDataType).all()

@@ -1,4 +1,5 @@
 import datetime
+import re
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from workflow.db import models
@@ -13,40 +14,123 @@ def create_step(db: Session, processno: int, taskno: int, status_no: int, usrid:
         usrid=usrid
     ))
 
+def list_all_steps(db: Session) -> list[models.Step]:
+    return db.query(models.Step).all()
+
+def _get_status_no(db: Session, description: str) -> int:
+    status = db.query(models.Status).filter(models.Status.description.ilike(description)).first()
+    if not status:
+        raise HTTPException(status_code=500, detail=f"Required status '{description}' not configured")
+    return status.statusno
+
+def _strip_quotes(val: str) -> str:
+    v = val.strip()
+    if (v.startswith("'") and v.endswith("'")) or (v.startswith('"') and v.endswith('"')):
+        return v[1:-1]
+    return v
+
+def _parse_rule_expr(rule: str):
+    """
+    Supports rule formats:
+      - 'default'
+      - 'procdata.<processdatatype>.<fieldname> == <value>'
+      - 'procdata.<processdatatype>.<fieldname> != <value>'
+    Returns:
+      ('default',) for default
+      (datatype, field, op, value) for expressions
+      None if unparsable
+    """
+    s = rule.strip()
+    if s.lower() == "default":
+        return ("default",)
+    m = re.match(
+        r"^procdata\.(?P<dtype>[^.\s]+)\.(?P<field>[^\s]+)\s*(?P<op>==|!=)\s*(?P<value>.+)$",
+        s,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        return None
+    return (m.group("dtype"), m.group("field"), m.group("op"), m.group("value").strip())
+
+def _evaluate_condition(db: Session, processno: int, dtype: str, field: str, op: str, expected_value: str) -> bool:
+    """
+    Look up ProcessData by:
+      - ProcessDataType.description == dtype
+      - ProcessData.fieldname == field
+      - ProcessData.processno == processno
+    Compare the stored string value against expected_value using == or !=.
+    """
+    expected = _strip_quotes(expected_value)
+    pd = (
+        db.query(models.ProcessData)
+        .join(
+            models.ProcessDataType,
+            models.ProcessData.process_data_type_no == models.ProcessDataType.process_data_type_no,
+        )
+        .filter(
+            models.ProcessData.processno == processno,
+            models.ProcessDataType.description == dtype,
+            models.ProcessData.fieldname == field,
+        )
+        .order_by(models.ProcessData.process_data_no.desc())
+        .first()
+    )
+    if not pd:
+        return False
+    actual = pd.value if pd.value is not None else ""
+    if op == "==":
+        return actual == expected
+    else:
+        return actual != expected
+
 def close_step(db: Session, step_id: int, request: schemas.CloseStepRequest, usrid: str) -> models.Step:
     db_step = db.query(models.Step).filter(models.Step.stepno == step_id).first()
     require_found(db_step, "Step not found", 404)
 
-    if db_step.status_no != 1:  # Assuming 'busy' is 1
+    # Ensure current step is 'busy'
+    busy_status_no = _get_status_no(db, "busy")
+    if db_step.status_no != busy_status_no:
         raise HTTPException(status_code=400, detail="Step is not busy")
 
+    # Get all rules for the current task
     task_rules = db.query(models.TaskRule).filter(models.TaskRule.taskno == db_step.taskno).all()
 
     next_task_no = None
-    for rule in task_rules:
-        # Simple rule evaluation: check if rule (as a key) exists in the request data
-        if rule.rule in request.rule_data:
-            next_task_no = rule.next_task_no
+    default_rule = None
+
+    # Evaluate non-default rules first
+    for tr in task_rules:
+        parsed = _parse_rule_expr(tr.rule)
+        if not parsed:
+            continue
+        if parsed[0] == "default":
+            default_rule = tr
+            continue
+        dtype, field, op, value = parsed
+        if _evaluate_condition(db, db_step.processno, dtype, field, op, value):
+            next_task_no = tr.next_task_no
             break
 
+    # If none matched, use default if present
     if next_task_no is None:
-        # Default next task if no rules match
-        default_rule = db.query(models.TaskRule).filter(
-            models.TaskRule.taskno == db_step.taskno, models.TaskRule.rule == 'default'
-        ).first()
-        if default_rule:
+        if default_rule is not None:
             next_task_no = default_rule.next_task_no
         else:
             raise HTTPException(status_code=400, detail="No matching rule and no default task found")
 
-    # Close current step (assuming 'completed' is statusno 2)
-    completed_status_no = 2
+    # Close current step with 'completed' status
+    completed_status_no = _get_status_no(db, "completed")
     db_step.status_no = completed_status_no
     db_step.date_ended = datetime.datetime.utcnow()
     db.commit()
 
-    # Create next step (assuming 'busy' is statusno 1)
-    busy_status_no = 1
+    # If the next_task_no is None, complete the process and return the closed step
+    if next_task_no is None:
+        from workflow.doa import processes as processes_dao
+        processes_dao.complete_process(db, db_step.processno, usrid)
+        return db_step
+
+    # Otherwise create the next step as 'busy'
     return create_step(
         db=db,
         processno=db_step.processno,

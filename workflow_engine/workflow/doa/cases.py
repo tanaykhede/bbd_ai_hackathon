@@ -5,13 +5,17 @@ from workflow import schemas
 from workflow.doa.utils import save
 from workflow.doa import processes as processes_dao, steps as steps_dao
 
-def create_case(db: Session, case: schemas.CaseCreate, usrid: str) -> models.Case:
-    return save(db, models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid))
 
 def get_case(db: Session, case_id: int) -> models.Case | None:
     return db.query(models.Case).filter(models.Case.caseno == case_id).first()
 
-def create_case_and_process(db: Session, case: schemas.CaseCreate, process_type_no: int, usrid: str) -> models.Case:
+def list_cases_by_user(db: Session, usrid: str) -> list[models.Case]:
+    return db.query(models.Case).filter(models.Case.usrid == usrid).all()
+
+def list_all_cases(db: Session) -> list[models.Case]:
+    return db.query(models.Case).all()
+
+def create_case(db: Session, case: schemas.CaseCreate, process_type_no: int, usrid: str) -> models.Case:
     # Create Case
     db_case = save(db, models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid))
 
@@ -23,8 +27,11 @@ def create_case_and_process(db: Session, case: schemas.CaseCreate, process_type_
     if not process_definition:
         raise HTTPException(status_code=404, detail="Active process definition for this type not found")
 
-    # Assuming status 'busy' has statusno = 1
-    busy_status_no = 1
+    # Resolve 'busy' status from the Status table
+    busy_status = db.query(models.Status).filter(models.Status.description.ilike("busy")).first()
+    if not busy_status:
+        raise HTTPException(status_code=500, detail="Required status 'busy' not configured")
+    busy_status_no = busy_status.statusno
 
     # Create Process via DAO
     db_process = processes_dao.create_process(

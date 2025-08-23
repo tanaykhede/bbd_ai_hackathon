@@ -7,6 +7,10 @@ from workflow.auth import get_current_user, roles_required, User
 
 router = APIRouter(tags=["processes"])
 
+@router.get("/processes", response_model=list[schemas.Process], dependencies=[Depends(roles_required("admin"))])
+def list_processes(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return processes_dao.list_all_processes(db)
+
 @router.post("/processes/", response_model=schemas.Process, dependencies=[Depends(roles_required("admin"))])
 def create_process(process: schemas.ProcessCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return processes_dao.create_process(db, process, user.username)
