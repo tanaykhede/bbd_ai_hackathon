@@ -2,23 +2,18 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from workflow.db import models
 from workflow import schemas
+from workflow.doa.utils import save
+from workflow.doa import processes as processes_dao, steps as steps_dao
 
-def create_case(db: Session, case: schemas.CaseCreate) -> models.Case:
-    db_case = models.Case(client_id=case.client_id, client_type=case.client_type, usrid=case.usrid)
-    db.add(db_case)
-    db.commit()
-    db.refresh(db_case)
-    return db_case
+def create_case(db: Session, case: schemas.CaseCreate, usrid: str) -> models.Case:
+    return save(db, models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid))
 
 def get_case(db: Session, case_id: int) -> models.Case | None:
     return db.query(models.Case).filter(models.Case.caseno == case_id).first()
 
-def create_case_and_process(db: Session, case: schemas.CaseCreate, process_type_no: int) -> models.Case:
+def create_case_and_process(db: Session, case: schemas.CaseCreate, process_type_no: int, usrid: str) -> models.Case:
     # Create Case
-    db_case = models.Case(client_id=case.client_id, client_type=case.client_type, usrid=case.usrid)
-    db.add(db_case)
-    db.commit()
-    db.refresh(db_case)
+    db_case = save(db, models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid))
 
     # Get Process Definition
     process_definition = db.query(models.ProcessDefinition).filter(
@@ -31,26 +26,24 @@ def create_case_and_process(db: Session, case: schemas.CaseCreate, process_type_
     # Assuming status 'busy' has statusno = 1
     busy_status_no = 1
 
-    # Create Process
-    db_process = models.Process(
-        case_no=db_case.caseno,
-        status_no=busy_status_no,
-        process_type_no=process_type_no,
-        usrid=case.usrid
+    # Create Process via DAO
+    db_process = processes_dao.create_process(
+        db,
+        schemas.ProcessCreate(
+            case_no=db_case.caseno,
+            status_no=busy_status_no,
+            process_type_no=process_type_no,
+        ),
+        usrid,
     )
-    db.add(db_process)
-    db.commit()
-    db.refresh(db_process)
 
-    # Create Initial Step
-    initial_step = models.Step(
+    # Create Initial Step via DAO
+    steps_dao.create_step(
+        db=db,
         processno=db_process.processno,
         taskno=process_definition.start_task_no,
         status_no=busy_status_no,
-        usrid=case.usrid
+        usrid=usrid,
     )
-    db.add(initial_step)
-    db.commit()
-    db.refresh(initial_step)
 
     return db_case

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from workflow.routers import (
+    auth,
     cases,
     processes,
     tasks,
@@ -13,6 +14,7 @@ from workflow.routers import (
 app = FastAPI()
 
 # Register routers
+app.include_router(auth.router)
 app.include_router(cases.router)
 app.include_router(processes.router)
 app.include_router(tasks.router)

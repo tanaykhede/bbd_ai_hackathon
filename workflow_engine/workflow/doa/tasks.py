@@ -1,10 +1,7 @@
 from sqlalchemy.orm import Session
 from workflow.db import models
 from workflow import schemas
+from workflow.doa.utils import save
 
-def create_task(db: Session, task: schemas.TaskCreate) -> models.Task:
-    db_task = models.Task(**task.dict(), usrid="user")
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    return db_task
+def create_task(db: Session, task: schemas.TaskCreate, usrid: str) -> models.Task:
+    return save(db, models.Task(**task.dict(), usrid=usrid))

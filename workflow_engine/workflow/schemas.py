@@ -75,7 +75,7 @@ class ProcessDefinitionBase(BaseModel):
     is_active: bool
 
 class ProcessDefinitionCreate(ProcessDefinitionBase):
-    pass
+    start_task_description: str
 
 class ProcessDefinition(ProcessDefinitionBase):
     process_definition_no: int
@@ -144,6 +144,20 @@ class ProcessData(ProcessDataBase):
     processno: int
     tmstamp: datetime.datetime
     usrid: str
+
+    class Config:
+        orm_mode = True
+
+# User schemas (for potential future use)
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    role: str
 
     class Config:
         orm_mode = True
