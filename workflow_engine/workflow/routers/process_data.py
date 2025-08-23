@@ -13,3 +13,9 @@ def list_process_data(db: Session = Depends(get_db), user: User = Depends(get_cu
     if "admin" in user.roles:
         return process_data_dao.list_all_process_data(db)
     return process_data_dao.list_process_data_for_user_cases(db, user.username)
+
+@router.get("/cases/{case_no}/process-data", response_model=list[schemas.ProcessData], dependencies=[Depends(roles_required("user", "admin"))])
+def list_process_data_for_case(case_no: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if "admin" in user.roles:
+        return process_data_dao.list_process_data_for_case(db, case_no)
+    return process_data_dao.list_process_data_for_case_and_user(db, case_no, user.username)

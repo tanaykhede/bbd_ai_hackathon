@@ -118,23 +118,34 @@ def close_step(db: Session, step_id: int, request: schemas.CloseStepRequest, usr
         else:
             raise HTTPException(status_code=400, detail="No matching rule and no default task found")
 
-    # Close current step with 'completed' status
-    completed_status_no = _get_status_no(db, "completed")
+    completed_status_no = _get_status_no(db, "complete")
+
+    # Apply mutations and commit once (atomic)
+    result_step: models.Step
+
+    # Close current step
     db_step.status_no = completed_status_no
     db_step.date_ended = datetime.datetime.utcnow()
-    db.commit()
 
-    # If the next_task_no is None, complete the process and return the closed step
     if next_task_no is None:
-        from workflow.doa import processes as processes_dao
-        processes_dao.complete_process(db, db_step.processno, usrid)
-        return db_step
+        # Complete the process as part of the same atomic commit
+        proc = db.query(models.Process).filter(models.Process.processno == db_step.processno).first()
+        require_found(proc, "Process not found", 404)
+        proc.status_no = completed_status_no
+        proc.date_ended = datetime.datetime.utcnow()
+        result_step = db_step
+    else:
+        # Create next step as 'busy'
+        new_step = models.Step(
+            processno=db_step.processno,
+            taskno=next_task_no,
+            status_no=busy_status_no,
+            usrid=usrid,
+        )
+        db.add(new_step)
+        db.flush()  # ensure PK assigned
+        result_step = new_step
 
-    # Otherwise create the next step as 'busy'
-    return create_step(
-        db=db,
-        processno=db_step.processno,
-        taskno=next_task_no,
-        status_no=busy_status_no,
-        usrid=usrid
-    )
+    db.commit()
+    db.refresh(result_step)
+    return result_step
