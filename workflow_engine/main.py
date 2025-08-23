@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from workflow.routers import (
     auth,
     cases,
@@ -14,6 +16,13 @@ from workflow.routers import (
 )
 
 app = FastAPI()
+
+# Serve static frontend
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", include_in_schema=False)
+def root():
+    return FileResponse("static/index.html")
 
 # Register routers
 app.include_router(auth.router)

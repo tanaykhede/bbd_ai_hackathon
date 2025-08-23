@@ -23,4 +23,8 @@ def get_status(statusno: int, db: Session = Depends(get_db), user: User = Depend
 def create_status(payload: schemas.StatusBase, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return statuses_dao.create_status(db, payload, user.username)
 
+@router.put("/statuses/{statusno}", response_model=schemas.Status, dependencies=[Depends(roles_required("admin"))])
+def update_status(statusno: int, payload: schemas.StatusBase, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return statuses_dao.update_status(db, statusno, payload, user.username)
+
 

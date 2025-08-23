@@ -54,6 +54,9 @@ class TaskRule(BaseModel):
     class Config:
         orm_mode = True
 
+class TaskRuleUpdate(BaseModel):
+    next_task_no: int | None = None
+
 class TaskBase(BaseModel):
     process_definition_no: int
     description: str
@@ -61,6 +64,11 @@ class TaskBase(BaseModel):
 
 class TaskCreate(TaskBase):
     pass
+
+class TaskUpdate(BaseModel):
+    process_definition_no: int | None = None
+    description: str | None = None
+    reference: str | None = None
 
 class Task(TaskBase):
     taskno: int
@@ -78,10 +86,22 @@ class ProcessDefinitionBase(BaseModel):
     is_active: bool
 
 class ProcessDefinitionCreate(ProcessDefinitionBase):
+    # Clients don't provide this; it's created server-side along with the start task
+    start_task_no: int | None = None
     start_task_description: str
 
-class ProcessDefinition(ProcessDefinitionBase):
+class ProcessDefinitionUpdate(BaseModel):
+    process_type_no: int | None = None
+    start_task_no: int | None = None
+    version: str | None = None
+    is_active: bool | None = None
+
+class ProcessDefinition(BaseModel):
     process_definition_no: int
+    process_type_no: int
+    start_task_no: int
+    version: str
+    is_active: bool
     tmstamp: datetime.datetime
     usrid: str
 
@@ -93,6 +113,9 @@ class ProcessTypeBase(BaseModel):
 
 class ProcessTypeCreate(ProcessTypeBase):
     pass
+
+class ProcessTypeUpdate(BaseModel):
+    description: str | None = None
 
 class ProcessType(BaseModel):
     description: str
@@ -122,6 +145,9 @@ class ProcessDataTypeBase(BaseModel):
 
 class ProcessDataTypeCreate(ProcessDataTypeBase):
     pass
+
+class ProcessDataTypeUpdate(BaseModel):
+    description: str | None = None
 
 class ProcessDataType(ProcessDataTypeBase):
     process_data_type_no: int
