@@ -27,6 +27,5 @@ app.include_router(task_rules.router)
 app.include_router(steps.router)
 app.include_router(statuses.router)
 app.include_router(process_data.router)
-app.include_router(statuses.router)
 
 
