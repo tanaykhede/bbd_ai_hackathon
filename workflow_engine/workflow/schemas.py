@@ -39,12 +39,15 @@ class Process(ProcessBase):
 class TaskRuleBase(BaseModel):
     taskno: int
     rule: str
-    next_task_no: int
+    next_task_no: int | None = None
 
 class TaskRuleCreate(TaskRuleBase):
     pass
 
-class TaskRule(TaskRuleBase):
+class TaskRule(BaseModel):
+    taskno: int
+    rule: str
+    next_task_no: int | None = None
     tmstamp: datetime.datetime
     usrid: str
 
@@ -91,8 +94,23 @@ class ProcessTypeBase(BaseModel):
 class ProcessTypeCreate(ProcessTypeBase):
     pass
 
-class ProcessType(ProcessTypeBase):
+class ProcessType(BaseModel):
+    description: str
     process_type_no: int
+    tmstamp: datetime.datetime
+    usrid: str
+
+    class Config:
+        orm_mode = True
+
+class StatusBase(BaseModel):
+    description: str
+
+class StatusCreate(StatusBase):
+    statusno: int
+
+class Status(StatusBase):
+    statusno: int
     tmstamp: datetime.datetime
     usrid: str
 
