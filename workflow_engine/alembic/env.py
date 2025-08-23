@@ -8,14 +8,17 @@ from sqlalchemy import pool
 from alembic import context
 from workflow.db.models import Base
 
+# Load environment variables from .env if present
 load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Set the database URL from the environment variable
-config.set_main_option("sqlalchemy.url", os.getenv("SQLALCHEMY_DATABASE_URL"))
+# Set the database URL from the environment variable if provided
+db_url = os.getenv("SQLALCHEMY_DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

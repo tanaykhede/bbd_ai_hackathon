@@ -109,3 +109,12 @@ class TaskRule(Base):
     tmstamp = Column(DateTime, default=datetime.datetime.utcnow)
     usrid = Column(String)
     task = relationship("Task", back_populates="task_rules")
+
+class User(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="user")  # "user" or "admin"
+    tmstamp = Column(DateTime, default=datetime.datetime.utcnow)
+    usrid = Column(String, default="system")
