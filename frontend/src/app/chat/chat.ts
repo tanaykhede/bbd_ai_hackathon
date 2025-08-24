@@ -34,8 +34,27 @@ export class ChatComponent {
 
     this.chatService.sendMessage(this.newMessage, historyForApi).subscribe({
       next: (response) => {
-        const assistantMessage = { role: 'assistant', content: response.response };
-        this.messages.push(assistantMessage);
+        // Backend returns { response: string, history: anthropic-shaped messages }
+        // We'll append the assistant response. If multiple logical responses are embedded (e.g. split by two consecutive newlines), create separate bubbles.
+        const raw = response.response || '';
+        const parts = raw
+          .split(/\n{2,}/) // split on blank lines
+          .map((p: string) => p.trim())
+          .filter((p: string) => p.length > 0);
+
+        if (parts.length === 0) {
+          this.messages.push({ role: 'assistant', content: raw });
+        } else if (parts.length === 1) {
+          this.messages.push({ role: 'assistant', content: parts[0] });
+        } else {
+          parts.forEach((p: string) => this.messages.push({ role: 'assistant', content: p }));
+        }
+
+        // Optionally sync full history for future context (keeping only role/text pairs)
+        if (Array.isArray(response.history)) {
+          // Reconstruct a simplified history from backend if needed (skip due to duplication risk)
+        }
+
         this.isLoading = false;
         this.newMessage = '';
       },
