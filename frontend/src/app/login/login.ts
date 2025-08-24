@@ -18,6 +18,6 @@ export class Login {
     // Handle login logic here
     console.log('Username:', this.username);
     console.log('Password:', this.password);
-    this.router.navigate(['/dashboard']);
+  this.router.navigate(['/chat']);
   }
 }

@@ -1,11 +1,9 @@
-<div class="dashboard-container">
-  <div class="tabs">
-    <button class="tab-button" (click)="selectTab('classify')">Classify Case</button>
-    <!-- Add more tabs here if needed -->
+<div class="dashboard-layout">
+  <div class="dashboard-topbar">
+    <div class="spacer"></div>
+    <button class="logout-btn" (click)="logout()" aria-label="Logout">Logout</button>
   </div>
-
-  <div class="tab-content">
-    <app-classify-case *ngIf="selectedTab === 'classify'"></app-classify-case>
-    <!-- Add more tab content here if needed -->
+  <div class="dashboard-chat-only">
+    <app-chat></app-chat>
   </div>
 </div>
