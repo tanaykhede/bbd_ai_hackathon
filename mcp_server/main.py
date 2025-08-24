@@ -3,6 +3,11 @@ from typing import List, Optional
 import httpx
 import logging
 import json
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -13,11 +18,16 @@ access_token: Optional[str] = None
 # Create MCP server
 mcp = FastMCP("WorkflowAssistant")
 
-# Tool: Login to the workflow engine
-@mcp.tool()
-def login(username: str, password: str) -> str:
-    """Logs into the workflow engine to get an access token."""
+def initial_login():
+    """Logs into the workflow engine to get an access token on startup."""
     global access_token
+    username = os.getenv("WORKFLOW_ENGINE_USERNAME")
+    password = os.getenv("WORKFLOW_ENGINE_PASSWORD")
+
+    if not username or not password:
+        logging.error("WORKFLOW_ENGINE_USERNAME and WORKFLOW_ENGINE_PASSWORD must be set in the .env file.")
+        return
+
     try:
         data = {"username": username, "password": password}
         response = httpx.post("http://localhost:8000/auth/token", data=data)
@@ -25,17 +35,13 @@ def login(username: str, password: str) -> str:
         token_data = response.json()
         access_token = token_data.get("access_token")
         if access_token:
-            logging.info("Login successful, access token stored.")
-            return "Login successful."
+            logging.info("Initial login successful, access token stored.")
         else:
-            logging.error("Access token not found in response.")
-            return "Login failed: Access token not found in response."
+            logging.error("Access token not found in initial login response.")
     except httpx.HTTPStatusError as e:
-        logging.error(f"Login failed: {e.response.status_code} - {e.response.text}")
-        return f"Login failed: {e.response.status_code} - {e.response.text}"
+        logging.error(f"Initial login failed: {e.response.status_code} - {e.response.text}")
     except httpx.RequestError as e:
-        logging.error(f"Error connecting to workflow engine for login: {e}")
-        return f"Error connecting to workflow engine for login: {e}"
+        logging.error(f"Error connecting to workflow engine for initial login: {e}")
 
 # Tool: Get cases from workflow engine
 @mcp.tool()
@@ -78,4 +84,5 @@ def get_cases() -> str:
 
 
 if __name__ == "__main__":
+    initial_login()
     mcp.run()
