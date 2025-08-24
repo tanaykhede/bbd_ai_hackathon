@@ -1,0 +1,11 @@
+<div class="dashboard-container">
+  <div class="tabs">
+    <button class="tab-button" (click)="selectTab('classify')">Classify Case</button>
+    <!-- Add more tabs here if needed -->
+  </div>
+
+  <div class="tab-content">
+    <app-classify-case *ngIf="selectedTab === 'classify'"></app-classify-case>
+    <!-- Add more tab content here if needed -->
+  </div>
+</div>
