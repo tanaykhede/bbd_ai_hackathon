@@ -266,7 +266,33 @@ async function loadTasks() {
 async function loadTaskRules() {
   try {
     const items = await api.get("/task-rules");
-    renderList("task-rule-list", items, i => `<div class="item">#${i.taskruleno} task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`);
+    const el = document.getElementById("task-rule-list");
+    if (!el) return;
+    if (!items || items.length === 0) {
+      el.innerHTML = "<div class='empty'>No records</div>";
+      return;
+    }
+    el.innerHTML = items.map(i => `
+      <div class="item">
+        #${i.taskruleno} task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}
+        <div><button class="secondary" data-edit-taskruleno="${i.taskruleno}">Edit</button></div>
+      </div>
+    `).join("");
+    // Bind edit buttons to populate the update form
+    el.querySelectorAll("button[data-edit-taskruleno]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-edit-taskruleno");
+        const tr = items.find(x => String(x.taskruleno) === String(id));
+        if (!tr) return;
+        const idEl = document.getElementById("tr-upd-id");
+        const ruleEl = document.getElementById("tr-upd-rule");
+        const nextEl = document.getElementById("tr-upd-next-task-no");
+        if (idEl) idEl.value = tr.taskno;
+        if (ruleEl) ruleEl.value = tr.rule ?? "";
+        if (nextEl) nextEl.value = tr.next_task_no ?? "";
+        notify(`Editing task rule #${tr.taskruleno}`, "info");
+      });
+    });
   } catch (e) { notify(`Failed to load task rules: ${e.message}`, "error"); }
 }
 
@@ -413,7 +439,7 @@ function bindForms() {
   document.getElementById("task-rule-update-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const tasknoStr = form.querySelector("#tr-upd-taskno")?.value ?? "";
+    const tasknoStr = form.querySelector("#tr-upd-no")?.value ?? "";
     const ruleInputVal = form.querySelector("#tr-upd-rule")?.value?.trim() ?? "";
     const rule = encodeURIComponent(ruleInputVal);
     const newRule = ruleInputVal;
