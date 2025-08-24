@@ -1,16 +1,14 @@
 from pydantic import BaseModel
 import datetime
 
-class CaseBase(BaseModel):
+class CaseCreate(BaseModel):
     client_id: str
     client_type: str
-    usrid: str
 
-class CaseCreate(CaseBase):
-    pass
-
-class Case(CaseBase):
+class Case(BaseModel):
     caseno: int
+    client_id: str
+    client_type: str
     date_created: datetime.datetime
     tmstamp: datetime.datetime
     usrid: str
@@ -56,6 +54,7 @@ class TaskRule(BaseModel):
         orm_mode = True
 
 class TaskRuleUpdate(BaseModel):
+    rule: str | None = None
     next_task_no: int | None = None
 
 class TaskBase(BaseModel):
@@ -192,6 +191,11 @@ class ProcessData(ProcessDataBase):
 
     class Config:
         orm_mode = True
+
+class ProcessDataUpdate(BaseModel):
+    process_data_type_no: int | None = None
+    fieldname: str | None = None
+    value: str | None = None
 
 # User schemas (for potential future use)
 class UserCreate(BaseModel):

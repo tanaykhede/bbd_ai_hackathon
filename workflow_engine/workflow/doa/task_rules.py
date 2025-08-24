@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
 from workflow.db import models
 from workflow import schemas
-from workflow.doa.utils import save, require_found
+from workflow.doa.utils import save, require_found, ensure_task_rule_identity
 
 def create_task_rule(db: Session, task_rule: schemas.TaskRuleCreate, usrid: str) -> models.TaskRule:
+    # Ensure PK default exists to avoid NOT NULL violations if migrations were skipped
+    ensure_task_rule_identity(db)
     return save(db, models.TaskRule(**task_rule.dict(), usrid=usrid))
 
 def update_task_rule(db: Session, taskruleno: int, payload: schemas.TaskRuleUpdate, usrid: str) -> models.TaskRule:

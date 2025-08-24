@@ -1,5 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 def save(db: Session, instance):
     db.add(instance)
@@ -41,3 +42,30 @@ def ensure_default_task_rule(db: Session, taskno: int, usrid: str, next_task_no:
         usrid=usrid,
     )
     return save(db, rule)
+
+def ensure_task_rule_identity(db: Session) -> None:
+    """
+    Ensure task_rules.taskruleno has a sequence/default so inserts work even if a migration was skipped.
+    Safe to run multiple times.
+    """
+    # Create sequence if missing, set default, but don't fail if already exists
+    db.execute(text(
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'task_rules_taskruleno_seq') THEN
+            CREATE SEQUENCE task_rules_taskruleno_seq;
+          END IF;
+          -- Attach sequence ownership if not already
+          PERFORM 1 FROM information_schema.columns
+           WHERE table_name='task_rules' AND column_name='taskruleno';
+          -- Set default unconditionally (idempotent in effect)
+          EXECUTE 'ALTER TABLE task_rules ALTER COLUMN taskruleno SET DEFAULT nextval(''task_rules_taskruleno_seq'')';
+        EXCEPTION WHEN others THEN
+          -- Ignore errors: sequence/default may already be set or table may not exist in this schema
+          NULL;
+        END;
+        $$;
+        """
+    ))
+    db.commit()

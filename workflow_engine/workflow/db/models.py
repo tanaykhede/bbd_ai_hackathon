@@ -119,3 +119,23 @@ class User(Base):
     role = Column(String, nullable=False, default="user")  # "user" or "admin"
     tmstamp = Column(DateTime, default=datetime.datetime.utcnow)
     usrid = Column(String, default="system")
+
+class LogEntry(Base):
+    __tablename__ = 'logs'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    level = Column(String, index=True, nullable=False)  # INFO/WARNING/ERROR
+    logger_name = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    pathname = Column(String)
+    lineno = Column(Integer)
+    func = Column(String)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    # HTTP request context (optional)
+    http_method = Column(String)
+    http_path = Column(String, index=True)
+    status_code = Column(Integer)
+    duration_ms = Column(Integer)
+    user_agent = Column(String)
+    client_ip = Column(String)
+    user_id = Column(String)

@@ -8,11 +8,11 @@ from workflow.db import models
 
 router = APIRouter(tags=["process_data_types"])
 
-@router.get("/process-data-types", response_model=list[schemas.ProcessDataType], dependencies=[Depends(roles_required("admin"))])
+@router.get("/process-data-types", response_model=list[schemas.ProcessDataType], dependencies=[Depends(roles_required("user", "admin"))])
 def list_process_data_types(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return process_data_types_dao.list_all_process_data_types(db)
 
-@router.get("/process-data-types/{process_data_type_no}", response_model=schemas.ProcessDataType, dependencies=[Depends(roles_required("admin"))])
+@router.get("/process-data-types/{process_data_type_no}", response_model=schemas.ProcessDataType, dependencies=[Depends(roles_required("user", "admin"))])
 def get_process_data_type(process_data_type_no: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     obj = db.query(models.ProcessDataType).filter(models.ProcessDataType.process_data_type_no == process_data_type_no).first()
     if not obj:

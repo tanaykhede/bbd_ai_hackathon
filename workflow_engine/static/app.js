@@ -2,6 +2,7 @@
 const state = {
   token: null,
   user: null,
+  userPortal: { currentCase: null, currentStep: null, processData: [] },
 };
 
 const api = {
@@ -55,20 +56,59 @@ const api = {
 
 function notify(msg, type = "info") {
   const el = document.getElementById("messages");
+  if (!el) {
+    // Fallback to console if messages container is not present
+    if (type === "error") console.error(msg);
+    else console.log(msg);
+    return;
+  }
   el.textContent = msg;
   el.className = `message ${type}`;
-  setTimeout(() => { el.textContent = ""; el.className = "message"; }, 4000);
+  clearTimeout(notify._clearTimer);
+  notify._clearTimer = setTimeout(() => { el.textContent = ""; el.className = "message"; }, 4000);
 }
 
 function setAuthStatus() {
   const status = document.getElementById("auth-status");
   const logout = document.getElementById("logout-btn");
+  if (!status || !logout) return;
   if (state.user) {
-    status.textContent = `Logged in as ${state.user.username} (${state.user.role})`;
+    status.textContent = `Logged in as ${state.user.username} (${state.user.role ?? ""})`;
     logout.style.display = "inline-block";
   } else {
     status.textContent = "Not logged in";
     logout.style.display = "none";
+  }
+
+  // Role-based UI adjustments
+  const roles = Array.isArray(state.user?.roles) ? state.user.roles : [state.user?.role].filter(Boolean);
+  const isAdmin = roles.includes("admin");
+  const isUserOnly = roles.includes("user") && !isAdmin;
+
+  const headerTitle = document.querySelector("header h1");
+  if (isUserOnly) {
+    // User console
+    document.title = "Workflow User Console";
+    if (headerTitle) headerTitle.textContent = "Workflow User Console";
+
+    // Show only the User Portal tab and panel
+    const tabButtons = document.querySelectorAll(".tabs .tab");
+    const panels = document.querySelectorAll(".panel");
+    tabButtons.forEach(btn => {
+      const show = btn.dataset.target === "user-portal";
+      btn.style.display = show ? "inline-block" : "none";
+      btn.classList.toggle("active", show);
+    });
+    panels.forEach(p => {
+      p.classList.toggle("active", p.id === "user-portal");
+    });
+  } else {
+    // Admin or logged out: admin console view
+    document.title = "Workflow Admin";
+    if (headerTitle) headerTitle.textContent = "Workflow Admin Console";
+    const tabButtons = document.querySelectorAll(".tabs .tab");
+    tabButtons.forEach(btn => { btn.style.display = "inline-block"; });
+    // Keep current active tab/panel as-is
   }
 }
 
@@ -84,6 +124,9 @@ async function login(username, password) {
     state.user = me;
     setAuthStatus();
     notify("Login successful", "success");
+    // Clear fields/lists and then (optionally) load data based on role
+    clearFieldsAndLists();
+    await loadUserPortal(); // ensure user portal data loads for non-admin users
     await refreshAll();
   } catch (e) {
     notify(`Login failed: ${e.message}`, "error");
@@ -95,6 +138,9 @@ async function register(username, password) {
     // role is required by the API model; server decides actual role (first user -> admin)
     await api.post("/auth/register", { username, password, role: "user" });
     notify("Registration successful, logging in...", "success");
+    // Clear registration fields
+    const ru = document.getElementById("reg-username"); if (ru) ru.value = "";
+    const rp = document.getElementById("reg-password"); if (rp) rp.value = "";
     await login(username, password);
   } catch (e) {
     notify(`Registration failed: ${e.message}`, "error");
@@ -105,6 +151,7 @@ function logout() {
   state.token = null;
   state.user = null;
   setAuthStatus();
+  clearFieldsAndLists();
   notify("Logged out", "success");
 }
 
@@ -294,11 +341,11 @@ function bindForms() {
     const taskno = parseInt(document.getElementById("tr-taskno").value, 10);
     const rule = document.getElementById("tr-rule").value.trim();
     const nextTaskEl = document.getElementById("tr-next-task-no");
-    const next_task_no = nextTaskEl.value ? parseInt(nextTaskEl.value, 10) : null;
+    const next_task_no = nextTaskEl && nextTaskEl.value ? parseInt(nextTaskEl.value, 10) : null;
     try {
       await api.post("/task-rules/", { taskno, rule, next_task_no });
       notify("Task rule created", "success");
-      nextTaskEl.value = "";
+      if (nextTaskEl) nextTaskEl.value = "";
       document.getElementById("tr-rule").value = "";
       await loadTaskRules();
     } catch (err) { notify(`Create task rule failed: ${err.message}`, "error"); }
@@ -365,13 +412,17 @@ function bindForms() {
   // Update Task Rule
   document.getElementById("task-rule-update-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const taskno = parseInt(document.getElementById("tr-upd-taskno").value, 10);
-    const rule = encodeURIComponent(document.getElementById("tr-upd-rule").value.trim());
-    const next = document.getElementById("tr-upd-next-task-no").value;
+    const form = e.currentTarget;
+    const tasknoStr = form.querySelector("#tr-upd-taskno")?.value ?? "";
+    const ruleInputVal = form.querySelector("#tr-upd-rule")?.value?.trim() ?? "";
+    const rule = encodeURIComponent(ruleInputVal);
+    const newRule = ruleInputVal;
+    const nextStr = form.querySelector("#tr-upd-next-task-no")?.value ?? "";
     const body = {};
-    if (next) body.next_task_no = parseInt(next, 10);
+    if (newRule) body.rule = newRule;
+    if (nextStr) body.next_task_no = parseInt(nextStr, 10);
     try {
-      await api.put(`/task-rules/${taskno}/${rule}`, body);
+      await api.put(`/task-rules/${parseInt(tasknoStr, 10)}/${rule}`, body);
       notify("Task rule updated", "success");
       await loadTaskRules();
     } catch (err) { notify(`Update task rule failed: ${err.message}`, "error"); }
@@ -467,9 +518,428 @@ function bindForms() {
   });
 }
 
+// User Portal logic
+function renderUserCurrent() {
+  const wrap = document.getElementById("user-current");
+  if (!wrap) return;
+  const c = state.userPortal.currentCase;
+  const s = state.userPortal.currentStep;
+  if (!c) {
+    wrap.innerHTML = "<div class='empty'>No case selected yet</div>";
+    return;
+  }
+  const procno = s ? s.processno : "N/A";
+  const stepno = s ? s.stepno : "N/A";
+  const taskno = s ? s.taskno : "N/A";
+  wrap.innerHTML = `
+    <div class="item">
+      <strong>Case #${c.caseno}</strong> (client_id=${c.client_id}, client_type=${c.client_type})
+      <br/>Process: ${procno}, Current Step: ${stepno}, Task: ${taskno}
+    </div>
+  `;
+}
+
+async function loadUserProcessTypes() {
+  const sel = document.getElementById("user-process-type-no");
+  if (!sel) return;
+  try {
+    const items = await api.get("/process-types");
+    sel.innerHTML = `<option value="">Select Process Type</option>` + items.map(pt =>
+      `<option value="${pt.process_type_no}">${pt.process_type_no} - ${pt.description}</option>`
+    ).join("");
+  } catch (e) {
+    notify(`Failed to load process types: ${e.message}`, "error");
+  }
+}
+
+async function loadUserProcessDataTypes() {
+  const selAdd = document.getElementById("user-pd-type");
+  const selEdit = document.getElementById("user-pd-edit-type");
+  try {
+    const items = await api.get("/process-data-types");
+    const html = `<option value="">Select Process Data Type</option>` + items.map(dt =>
+      `<option value="${dt.process_data_type_no}">${dt.process_data_type_no} - ${dt.description}</option>`
+    ).join("");
+    if (selAdd) selAdd.innerHTML = html;
+    if (selEdit) selEdit.innerHTML = html;
+  } catch (e) {
+    notify(`Failed to load process data types: ${e.message}`, "error");
+  }
+}
+
+async function loadCaseProcessData(caseNo) {
+  const listEl = document.getElementById("user-procdata-list");
+  if (!listEl || !caseNo) return;
+  try {
+    const items = await api.get(`/cases/${caseNo}/process-data`);
+    state.userPortal.processData = items || [];
+    if (!items || items.length === 0) {
+      listEl.innerHTML = "<div class='empty'>No process data</div>";
+      return;
+    }
+    listEl.innerHTML = items.map(i => `
+      <div class="item">
+        #${i.process_data_no} &middot; type=${i.process_data_type_no} &middot; ${i.fieldname} = ${i.value}
+        <div><button class="secondary" data-edit-pdno="${i.process_data_no}">Edit</button></div>
+      </div>
+    `).join("");
+    listEl.querySelectorAll("button[data-edit-pdno]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const pdno = parseInt(btn.getAttribute("data-edit-pdno"), 10);
+        const pd = state.userPortal.processData.find(x => x.process_data_no === pdno);
+        if (pd) populateEditProcessDataForm(pd);
+      });
+    });
+  } catch (e) {
+    notify(`Failed to load case data: ${e.message}`, "error");
+  }
+}
+
+function populateEditProcessDataForm(pd) {
+  const idEl = document.getElementById("user-pd-edit-id");
+  const typeEl = document.getElementById("user-pd-edit-type");
+  const fieldEl = document.getElementById("user-pd-edit-field");
+  const valueEl = document.getElementById("user-pd-edit-value");
+  if (idEl) idEl.value = pd.process_data_no;
+  if (typeEl) typeEl.value = String(pd.process_data_type_no);
+  if (fieldEl) fieldEl.value = pd.fieldname || "";
+  if (valueEl) valueEl.value = pd.value || "";
+}
+
+async function loadCaseSteps(caseNo) {
+  const listEl = document.getElementById("user-steps-list");
+  if (!listEl || !caseNo) return;
+  try {
+    const items = await api.get(`/cases/${caseNo}/steps`);
+    if (!items || items.length === 0) {
+      listEl.innerHTML = "<div class='empty'>No steps</div>";
+      return;
+    }
+    listEl.innerHTML = items.map(s => `
+      <div class="item">
+        Step #${s.stepno} &middot; Task ${s.taskno} &middot; Status ${s.status_no}
+        <br/>Started: ${s.date_started} ${s.date_ended ? `&middot; Ended: ${s.date_ended}` : ""}
+      </div>
+    `).join("");
+  } catch (e) {
+    notify(`Failed to load steps: ${e.message}`, "error");
+  }
+}
+
+// Helpers for searching/selecting cases
+async function listMyCases() {
+  return api.get("/cases");
+}
+
+function renderSearchResults(items) {
+  const el = document.getElementById("user-search-results");
+  if (!el) return;
+  if (!items || items.length === 0) {
+    el.innerHTML = "<div class='empty'>No cases found</div>";
+    return;
+  }
+  el.innerHTML = items.map(c => `
+    <div class="item">
+      <div>
+        <strong>Case #${c.caseno}</strong> &middot; client_id=${c.client_id} &middot; client_type=${c.client_type}
+      </div>
+      <button class="secondary" data-select-caseno="${c.caseno}">Select</button>
+    </div>
+  `).join("");
+  // Bind select buttons
+  el.querySelectorAll("button[data-select-caseno]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const caseno = parseInt(btn.getAttribute("data-select-caseno"), 10);
+      const target = items.find(i => i.caseno === caseno);
+      if (target) {
+        await selectCase(target);
+      }
+    });
+  });
+}
+
+async function selectCase(c) {
+  state.userPortal.currentCase = c;
+  notify(`Selected case #${c.caseno}`, "success");
+  await refreshUserCurrent();
+  await loadCaseProcessData(c.caseno);
+  await loadCaseSteps(c.caseno);
+}
+
+function updateProcessDataFormEnabled() {
+  const addForm = document.getElementById("user-procdata-form");
+  const editForm = document.getElementById("user-procdata-edit-form");
+  const info = document.getElementById("user-procdata-edit-info");
+  const disabled = !state.userPortal.currentStep; // enable only when a busy step exists
+  if (addForm) {
+    addForm.querySelectorAll("input, select, button[type='submit']").forEach(el => {
+      el.disabled = disabled;
+    });
+  }
+  if (editForm) {
+    editForm.querySelectorAll("input, select, button[type='submit']").forEach(el => {
+      el.disabled = disabled;
+    });
+  }
+  if (info) {
+    if (disabled) info.textContent = "Case is not busy (no active step) — editing/adding process data is disabled.";
+    else info.textContent = "";
+  }
+}
+
+async function refreshUserCurrent() {
+  const c = state.userPortal.currentCase;
+  if (!c) {
+    state.userPortal.currentStep = null;
+    renderUserCurrent();
+    updateProcessDataFormEnabled();
+    return;
+  }
+  try {
+    const step = await api.get(`/cases/${c.caseno}/current-step`);
+    state.userPortal.currentStep = step;
+  } catch (e) {
+    // If 404, there may be no active step (process completed)
+    state.userPortal.currentStep = null;
+  }
+  renderUserCurrent();
+  updateProcessDataFormEnabled();
+}
+
+function bindUserPortal() {
+  const searchForm = document.getElementById("user-search-form");
+  if (searchForm) {
+    searchForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const q = document.getElementById("user-search-query")?.value.trim();
+      if (!q) return;
+      const resultsEl = document.getElementById("user-search-results");
+      if (resultsEl) resultsEl.innerHTML = "<div class='item'>Searching...</div>";
+      try {
+        const roles = Array.isArray(state.user?.roles) ? state.user.roles : [state.user?.role].filter(Boolean);
+        const isAdmin = roles.includes("admin");
+        const num = Number(q);
+        const isNumeric = !Number.isNaN(num) && /^\d+$/.test(q);
+
+        if (isNumeric) {
+          // Try by case number first
+          let item = null;
+          try {
+            item = await api.get(`/cases/${num}`);
+          } catch { /* ignore 404 or errors for fallback */ }
+          let results = [];
+          if (item && (isAdmin || item.usrid === state.user.username)) {
+            results = [item];
+          }
+          // Fallback: search by client_id among user's cases if not found/authorized
+          if (results.length === 0) {
+            const items = await listMyCases();
+            const normQ = q.toLowerCase();
+            results = items.filter(c => (c.client_id || "").toLowerCase().includes(normQ));
+          }
+          renderSearchResults(results);
+        } else {
+          // Search by client id among user's cases (partial, case-insensitive)
+          const items = await listMyCases();
+          const normQ = q.toLowerCase();
+          const filtered = items.filter(c => (c.client_id || "").toLowerCase().includes(normQ));
+          renderSearchResults(filtered);
+        }
+      } catch (err) {
+        notify(`Search failed: ${err.message}`, "error");
+        renderSearchResults([]);
+      }
+    });
+  }
+
+  const createForm = document.getElementById("user-create-case-form");
+  if (createForm) {
+    createForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.user) {
+        notify("Please login first", "error");
+        return;
+      }
+      const ptype = document.getElementById("user-process-type-no")?.value;
+      const clientId = document.getElementById("user-client-id")?.value.trim();
+      const clientType = document.getElementById("user-client-type")?.value.trim();
+      if (!ptype || !clientId || !clientType) {
+        notify("Please complete all fields", "error");
+        return;
+      }
+      try {
+        const body = { client_id: clientId, client_type: clientType, usrid: state.user.username };
+        const created = await api.post(`/create-case/?process_type_no=${parseInt(ptype, 10)}`, body);
+        state.userPortal.currentCase = created;
+        notify(`Case #${created.caseno} created`, "success");
+        await refreshUserCurrent();
+        await loadCaseProcessData(created.caseno);
+        await loadCaseSteps(created.caseno);
+      } catch (err) {
+        notify(`Create case failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const pdForm = document.getElementById("user-procdata-form");
+  if (pdForm) {
+    pdForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const c = state.userPortal.currentCase;
+      if (!c) {
+        notify("Create or select a case first", "error");
+        return;
+      }
+      // Ensure we have the latest current step
+      if (!state.userPortal.currentStep) {
+        await refreshUserCurrent();
+      }
+      const step = state.userPortal.currentStep;
+      if (!step) {
+        notify("No active step to attach data to (process may be complete)", "error");
+        return;
+      }
+      const pdType = document.getElementById("user-pd-type")?.value;
+      const field = document.getElementById("user-pd-field")?.value.trim();
+      const value = document.getElementById("user-pd-value")?.value;
+      if (!pdType || !field) {
+        notify("Please provide process data type and field", "error");
+        return;
+      }
+      try {
+        await api.post(`/processes/${step.processno}/data/`, {
+          process_data_type_no: parseInt(pdType, 10),
+          fieldname: field,
+          value
+        });
+        notify("Process data added", "success");
+        document.getElementById("user-pd-field").value = "";
+        document.getElementById("user-pd-value").value = "";
+        await loadCaseProcessData(c.caseno);
+      } catch (err) {
+        notify(`Add process data failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const pdEditForm = document.getElementById("user-procdata-edit-form");
+  if (pdEditForm) {
+    pdEditForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const c = state.userPortal.currentCase;
+      if (!c) {
+        notify("Select a case first", "error");
+        return;
+      }
+      if (!state.userPortal.currentStep) {
+        await refreshUserCurrent();
+      }
+      if (!state.userPortal.currentStep) {
+        notify("Case is not busy — cannot update data", "error");
+        return;
+      }
+      const id = document.getElementById("user-pd-edit-id")?.value;
+      const pdType = document.getElementById("user-pd-edit-type")?.value;
+      const field = document.getElementById("user-pd-edit-field")?.value.trim();
+      const value = document.getElementById("user-pd-edit-value")?.value;
+      if (!id) {
+        notify("No process data selected for edit", "error");
+        return;
+      }
+      if (!pdType || !field) {
+        notify("Please provide process data type and field", "error");
+        return;
+      }
+      try {
+        await api.put(`/process-data/${parseInt(id, 10)}`, {
+          process_data_type_no: parseInt(pdType, 10),
+          fieldname: field,
+          value
+        });
+        notify("Process data updated", "success");
+        // Clear edit form
+        const idEl = document.getElementById("user-pd-edit-id"); if (idEl) idEl.value = "";
+        const fieldEl = document.getElementById("user-pd-edit-field"); if (fieldEl) fieldEl.value = "";
+        const valueEl = document.getElementById("user-pd-edit-value"); if (valueEl) valueEl.value = "";
+        await loadCaseProcessData(c.caseno);
+      } catch (err) {
+        notify(`Update process data failed: ${err.message}`, "error");
+      }
+    });
+  }
+
+  const doneBtn = document.getElementById("user-done-btn");
+  if (doneBtn) {
+    doneBtn.addEventListener("click", async () => {
+      const step = state.userPortal.currentStep;
+      const c = state.userPortal.currentCase;
+      if (!c) {
+        notify("Create or select a case first", "error");
+        return;
+      }
+      if (!step) {
+        notify("No active step to close", "error");
+        return;
+      }
+      try {
+        await api.post(`/steps/${step.stepno}/close`, { rule_data: {} });
+        notify("Step closed", "success");
+        await refreshUserCurrent();
+        if (c?.caseno) {
+          await loadCaseProcessData(c.caseno);
+          await loadCaseSteps(c.caseno);
+        }
+      } catch (err) {
+        notify(`Close step failed: ${err.message}`, "error");
+      }
+    });
+  }
+}
+
+async function loadUserPortal() {
+  if (!state.token) return;
+  await Promise.all([
+    loadUserProcessTypes(),
+    loadUserProcessDataTypes(),
+  ]);
+}
+
+// Clears common inputs and transient lists/details without a full reload
+function clearFieldsAndLists() {
+  // Auth forms
+  const idsToClear = [
+    "username","password","reg-username","reg-password",
+    // User portal create/search
+    "user-search-query","user-client-id","user-client-type","user-pd-field","user-pd-value"
+  ];
+  idsToClear.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+
+  // Selects to reset
+  const selectsToReset = ["user-process-type-no","user-pd-type"];
+  selectsToReset.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+
+  // Checkboxes
+  const checksToUncheck = ["pd-is-active","pd-upd-is-active"];
+  checksToUncheck.forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+
+  // Detail/list containers to clear (transient views)
+  const containersToClear = [
+    "status-detail","process-type-detail","process-data-type-detail","process-definition-detail","task-detail",
+    "user-current","user-procdata-list","user-steps-list","user-search-results"
+  ];
+  containersToClear.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ""; });
+
+  // Reset user portal state and disable add-data when no busy step
+  state.userPortal.currentCase = null;
+  state.userPortal.currentStep = null;
+  updateProcessDataFormEnabled?.();
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   bindAuth();
   bindTabs();
   bindForms();
+  bindUserPortal();
   setAuthStatus();
+  loadUserPortal().catch(() => {});
 });

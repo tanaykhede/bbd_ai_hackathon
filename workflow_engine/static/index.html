@@ -33,6 +33,7 @@
       <button class="tab" data-target="process-definitions">Process Definitions</button>
       <button class="tab" data-target="tasks">Tasks</button>
       <button class="tab" data-target="task-rules">Task Rules</button>
+      <button class="tab" data-target="user-portal">User Portal</button>
     </nav>
 
     <section id="statuses" class="panel active">
@@ -174,9 +175,63 @@
       <h3>Update Task Rule</h3>
       <form id="task-rule-update-form" class="form-grid">
         <input type="number" id="tr-upd-id" placeholder="Task Rule No" required />
+        <input type="text" id="tr-upd-rule" placeholder="New rule (optional)" />
         <input type="number" id="tr-upd-next-task-no" placeholder="Next Task No (optional)" />
         <button type="submit">Update</button>
       </form>
+    </section>
+
+    <section id="user-portal" class="panel">
+      <h2>User Portal</h2>
+
+      <h3>Search Case</h3>
+      <form id="user-search-form" class="form-grid">
+        <input type="text" id="user-search-query" placeholder="Enter Case No or Client ID" required />
+        <button type="submit">Search</button>
+      </form>
+      <div id="user-search-results" class="list"></div>
+
+      <h3>Create Case</h3>
+      <form id="user-create-case-form" class="form-grid">
+        <select id="user-process-type-no" required>
+          <option value="">Select Process Type</option>
+        </select>
+        <input type="text" id="user-client-id" placeholder="Client ID" required />
+        <input type="text" id="user-client-type" placeholder="Client Type" required />
+        <button type="submit">Create Case</button>
+      </form>
+
+      <div id="user-current" class="list"></div>
+
+      <h3>Case Steps</h3>
+      <div id="user-steps-list" class="list"></div>
+
+      <h3>Case Process Data</h3>
+      <div id="user-procdata-list" class="list"></div>
+
+      <h3>Edit Process Data</h3>
+      <form id="user-procdata-edit-form" class="form-grid">
+        <input type="hidden" id="user-pd-edit-id" />
+        <select id="user-pd-edit-type" required>
+          <option value="">Select Process Data Type</option>
+        </select>
+        <input type="text" id="user-pd-edit-field" placeholder="Field name" required />
+        <input type="text" id="user-pd-edit-value" placeholder="Value" required />
+        <button type="submit">Update Data</button>
+      </form>
+
+      <h3>Add Process Data</h3>
+      <form id="user-procdata-form" class="form-grid">
+        <select id="user-pd-type" required>
+          <option value="">Select Process Data Type</option>
+        </select>
+        <input type="text" id="user-pd-field" placeholder="Field name" required />
+        <input type="text" id="user-pd-value" placeholder="Value" required />
+        <button type="submit">Add Data</button>
+      </form>
+      <div id="user-procdata-edit-info" class="hint"></div>
+
+      <button id="user-done-btn" class="primary">Done</button>
     </section>
 
     <section class="panel">
