@@ -1,0 +1,36 @@
+<div class="chat-container">
+  <div class="chat-header">Workflow Agent</div>
+  <div class="message-window">
+    <div *ngFor="let message of messages" class="message" [ngClass]="'message-' + message.role">
+      <div class="message-content" [ngClass]="{'structured': message.role === 'assistant' && message.content?.includes('\n')}">
+        <ng-container *ngIf="message.role === 'assistant'; else userMsg">
+          <div class="assistant-box">
+            <pre>{{ message.content }}</pre>
+          </div>
+        </ng-container>
+        <ng-template #userMsg>
+          <p>{{ message.content }}</p>
+        </ng-template>
+      </div>
+    </div>
+    <div *ngIf="isLoading" class="message message-assistant">
+      <div class="message-content">
+        <div class="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="input-area">
+    <input
+      type="text"
+      [(ngModel)]="newMessage"
+      (keyup.enter)="sendMessage()"
+      placeholder="Type your message here..."
+      [disabled]="isLoading"
+    />
+    <button (click)="sendMessage()" [disabled]="isLoading">Send</button>
+  </div>
+</div>

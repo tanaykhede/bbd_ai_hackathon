@@ -1,17 +1,22 @@
 import { Component } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { ClassifyCase } from '../classify-case/classify-case';
+import { ChatComponent } from '../chat/chat';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, ClassifyCase],
+  imports: [CommonModule, ChatComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
 })
 export class Dashboard {
-  selectedTab = 'classify';
+  constructor(private router: Router) {}
 
-  selectTab(tab: string) {
-    this.selectedTab = tab;
+  logout() {
+    // Clear any stored auth (placeholder if added later)
+    try {
+      localStorage.removeItem('authToken');
+    } catch {}
+    this.router.navigate(['/login']);
   }
 }

@@ -1,2 +1,6 @@
 mvp[cli]
 httpx
+anthropic
+fastapi
+pydantic
+uvicorn
