@@ -103,8 +103,9 @@ class ProcessDataType(Base):
 
 class TaskRule(Base):
     __tablename__ = 'task_rules'
-    taskno = Column(Integer, ForeignKey('tasks.taskno'), primary_key=True)
-    rule = Column(String, primary_key=True)
+    taskruleno = Column(Integer, primary_key=True, autoincrement=True)
+    taskno = Column(Integer, ForeignKey('tasks.taskno'), nullable=False)
+    rule = Column(String, nullable=False)
     next_task_no = Column(Integer)
     tmstamp = Column(DateTime, default=datetime.datetime.utcnow)
     usrid = Column(String)

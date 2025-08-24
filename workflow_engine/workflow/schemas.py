@@ -45,6 +45,7 @@ class TaskRuleCreate(TaskRuleBase):
     pass
 
 class TaskRule(BaseModel):
+    taskruleno: int
     taskno: int
     rule: str
     next_task_no: int | None = None

@@ -219,7 +219,7 @@ async function loadTasks() {
 async function loadTaskRules() {
   try {
     const items = await api.get("/task-rules");
-    renderList("task-rule-list", items, i => `<div class="item">task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`);
+    renderList("task-rule-list", items, i => `<div class="item">#${i.taskruleno} task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`);
   } catch (e) { notify(`Failed to load task rules: ${e.message}`, "error"); }
 }
 
