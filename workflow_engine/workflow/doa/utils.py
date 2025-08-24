@@ -13,7 +13,7 @@ def require_found(obj, detail: str = "Not found", status_code: int = 404):
     return obj
 
 def ensure_task_exists(db: Session, taskno: int, process_definition_no: int, description: str, usrid: str, reference: str | None = None):
-    from workflow.db import models
+    from workflow_engine.workflow.db import models
     task = db.query(models.Task).filter(models.Task.taskno == taskno).first()
     if task:
         return task
@@ -27,17 +27,17 @@ def ensure_task_exists(db: Session, taskno: int, process_definition_no: int, des
     return save(db, task)
 
 def ensure_default_task_rule(db: Session, taskno: int, usrid: str, next_task_no: int | None = None):
-    from workflow.db import models
+    from workflow_engine.workflow.db import models
     rule = db.query(models.TaskRule).filter(
         models.TaskRule.taskno == taskno,
         models.TaskRule.rule == "default",
     ).first()
     if rule:
         return rule
-    rule = models.TaskRule(
-        taskno=taskno,
-        rule="default",
-        next_task_no=next_task_no if next_task_no is not None else taskno,
-        usrid=usrid,
-    )
+        rule = models.TaskRule(
+            taskno=taskno,
+            rule="default",
+            next_task_no=next_task_no if next_task_no is not None else taskno,
+            usrid=usrid,
+        )
     return save(db, rule)

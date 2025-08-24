@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from workflow.routers import (
+from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
+from workflow_engine.workflow.routers import (
     auth,
     cases,
     processes,
@@ -17,12 +18,17 @@ from workflow.routers import (
 
 app = FastAPI()
 
-# Serve static frontend
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Serve static frontend if present
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 @app.get("/", include_in_schema=False)
 def root():
-    return FileResponse("static/index.html")
+    index_path = _static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return JSONResponse({"status": "ok", "message": "Workflow Engine API"})
 
 # Register routers
 app.include_router(auth.router)

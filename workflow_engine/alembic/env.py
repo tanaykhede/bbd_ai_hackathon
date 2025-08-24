@@ -1,4 +1,6 @@
 import os
+import sys
+from pathlib import Path
 from logging.config import fileConfig
 from dotenv import load_dotenv
 
@@ -6,7 +8,19 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from workflow.db.models import Base
+
+# Ensure we can import models whether running from repo root or workflow_engine dir
+try:
+    from workflow_engine.workflow.db.models import Base
+except ModuleNotFoundError:
+    # Add repo root to sys.path and retry, else fall back to local package
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.append(str(repo_root))
+    try:
+        from workflow_engine.workflow.db.models import Base
+    except ModuleNotFoundError:
+        from workflow.db.models import Base
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -17,6 +31,11 @@ config = context.config
 
 # Set the database URL from the environment variable if provided
 db_url = os.getenv("SQLALCHEMY_DATABASE_URL")
+if db_url and db_url.startswith("postgres://"):
+    db_url = "postgresql://" + db_url[len("postgres://"):]
+if db_url and "options=-csearch_path=workflow_db" not in db_url:
+    sep = '&' if '?' in db_url else '?'
+    db_url = f"{db_url}{sep}options=-csearch_path=workflow_db"
 if db_url:
     config.set_main_option("sqlalchemy.url", db_url)
 

@@ -1,5 +1,5 @@
 from typing import Generator
-from workflow.db.database import SessionLocal
+from workflow_engine.workflow.db.database import SessionLocal
 
 def get_db() -> Generator:
     db = SessionLocal()

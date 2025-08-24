@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status as http_status
 from sqlalchemy.orm import Session
 
-from workflow import schemas
-from workflow.dependencies import get_db
-from workflow.auth import get_current_user, roles_required, User
-from workflow.doa import statuses as statuses_dao
+from workflow_engine.workflow import schemas
+from workflow_engine.workflow.dependencies import get_db
+from workflow_engine.workflow.auth import get_current_user, roles_required, User
+from workflow_engine.workflow.doa import statuses as statuses_dao
 
 router = APIRouter(tags=["status"])
 

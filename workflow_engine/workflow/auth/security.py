@@ -9,8 +9,8 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
-from workflow.dependencies import get_db
-from workflow.db import models
+from workflow_engine.workflow.dependencies import get_db
+from workflow_engine.workflow.db import models
 
 # OAuth2 schemes
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")

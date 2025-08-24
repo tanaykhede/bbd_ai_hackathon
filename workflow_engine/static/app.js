@@ -219,7 +219,11 @@ async function loadTasks() {
 async function loadTaskRules() {
   try {
     const items = await api.get("/task-rules");
-    renderList("task-rule-list", items, i => `<div class="item">task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`);
+    renderList(
+      "task-rule-list",
+      items,
+      i => `<div class="item">#${i.taskruleno} · task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`
+    );
   } catch (e) { notify(`Failed to load task rules: ${e.message}`, "error"); }
 }
 
@@ -365,13 +369,14 @@ function bindForms() {
   // Update Task Rule
   document.getElementById("task-rule-update-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const taskno = parseInt(document.getElementById("tr-upd-taskno").value, 10);
-    const rule = encodeURIComponent(document.getElementById("tr-upd-rule").value.trim());
+    // Backward-compatible: reuse the existing field to capture the Task Rule ID (taskruleno)
+    const id = parseInt(document.getElementById("tr-upd-taskno").value, 10);
+    // 'tr-upd-rule' is no longer required when updating by ID
     const next = document.getElementById("tr-upd-next-task-no").value;
     const body = {};
     if (next) body.next_task_no = parseInt(next, 10);
     try {
-      await api.put(`/task-rules/${taskno}/${rule}`, body);
+      await api.put(`/task-rules/${id}`, body);
       notify("Task rule updated", "success");
       await loadTaskRules();
     } catch (err) { notify(`Update task rule failed: ${err.message}`, "error"); }
@@ -458,11 +463,15 @@ function bindForms() {
 
   document.getElementById("task-rule-get-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const taskno = parseInt(document.getElementById("tr-get-taskno").value, 10);
-    const rule = encodeURIComponent(document.getElementById("tr-get-rule").value.trim());
+    // Use the ID (taskruleno); reuse the existing field for compatibility
+    const id = parseInt(document.getElementById("tr-get-taskno").value, 10);
     try {
-      const item = await api.get(`/task-rules/${taskno}/${rule}`);
-      renderDetail("task-rule-detail", item, i => `<div class="item">task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`);
+      const item = await api.get(`/task-rules/${id}`);
+      renderDetail(
+        "task-rule-detail",
+        item,
+        i => `<div class="item">#${i.taskruleno} · task ${i.taskno} - rule "${i.rule}" -> next ${i.next_task_no ?? "None"}</div>`
+      );
     } catch (err) { notify(`Get task rule failed: ${err.message}`, "error"); }
   });
 }

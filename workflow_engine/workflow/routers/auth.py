@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from workflow.dependencies import get_db
-from workflow.doa import users as users_dao
-from workflow.auth.security import create_access_token, User, get_current_user, get_optional_user
+from workflow_engine.workflow.dependencies import get_db
+from workflow_engine.workflow.doa import users as users_dao
+from workflow_engine.workflow.auth.security import create_access_token, User, get_current_user, get_optional_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

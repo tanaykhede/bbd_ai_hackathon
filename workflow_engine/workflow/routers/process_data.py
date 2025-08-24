@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from workflow.dependencies import get_db
-from workflow import schemas
-from workflow.doa import process_data as process_data_dao
-from workflow.auth import roles_required, get_current_user, User
+from workflow_engine.workflow.dependencies import get_db
+from workflow_engine.workflow import schemas
+from workflow_engine.workflow.doa import process_data as process_data_dao
+from workflow_engine.workflow.auth import roles_required, get_current_user, User
 
 router = APIRouter(tags=["process_data"])
 
