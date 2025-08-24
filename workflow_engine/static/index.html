@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Workflow Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Workflow Admin Console</h1>
+    <div class="auth">
+      <form id="login-form">
+        <input type="text" id="username" placeholder="Username" required />
+        <input type="password" id="password" placeholder="Password" required />
+        <button type="submit">Login</button>
+      </form>
+      <form id="register-form">
+        <input type="text" id="reg-username" placeholder="New username" required />
+        <input type="password" id="reg-password" placeholder="New password" required />
+        <button type="submit" class="secondary">Register</button>
+      </form>
+      <div id="auth-status">Not logged in</div>
+      <button id="logout-btn" class="secondary" style="display:none;">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs">
+      <button class="tab active" data-target="statuses">Statuses</button>
+      <button class="tab" data-target="process-types">Process Types</button>
+      <button class="tab" data-target="process-data-types">Process Data Types</button>
+      <button class="tab" data-target="process-definitions">Process Definitions</button>
+      <button class="tab" data-target="tasks">Tasks</button>
+      <button class="tab" data-target="task-rules">Task Rules</button>
+      <button class="tab" data-target="user-portal">User Portal</button>
+    </nav>
+
+    <section id="statuses" class="panel active">
+      <h2>Statuses</h2>
+      <form id="status-form" class="form-grid">
+        <input type="text" id="status-description" placeholder="Description" required />
+        <button type="submit">Create Status</button>
+      </form>
+      <div class="list" id="status-list"></div>
+      <h3>Retrieve Status</h3>
+      <form id="status-get-form" class="form-grid">
+        <input type="number" id="status-id" placeholder="Status No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="status-detail" class="list"></div>
+      <h3>Update Status</h3>
+      <form id="status-update-form" class="form-grid">
+        <input type="number" id="status-upd-id" placeholder="Status No" required />
+        <input type="text" id="status-upd-description" placeholder="New description" required />
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="process-types" class="panel">
+      <h2>Process Types</h2>
+      <form id="process-type-form" class="form-grid">
+        <input type="text" id="process-type-description" placeholder="Description" required />
+        <button type="submit">Create Process Type</button>
+      </form>
+      <div class="list" id="process-type-list"></div>
+      <h3>Retrieve Process Type</h3>
+      <form id="process-type-get-form" class="form-grid">
+        <input type="number" id="process-type-id" placeholder="Process Type No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="process-type-detail" class="list"></div>
+      <h3>Update Process Type</h3>
+      <form id="process-type-update-form" class="form-grid">
+        <input type="number" id="process-type-upd-id" placeholder="Process Type No" required />
+        <input type="text" id="process-type-upd-description" placeholder="New description" required />
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="process-data-types" class="panel">
+      <h2>Process Data Types</h2>
+      <form id="process-data-type-form" class="form-grid">
+        <input type="text" id="process-data-type-description" placeholder="Description" required />
+        <button type="submit">Create Process Data Type</button>
+      </form>
+      <div class="list" id="process-data-type-list"></div>
+      <h3>Retrieve Process Data Type</h3>
+      <form id="process-data-type-get-form" class="form-grid">
+        <input type="number" id="process-data-type-id" placeholder="Process Data Type No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="process-data-type-detail" class="list"></div>
+      <h3>Update Process Data Type</h3>
+      <form id="process-data-type-update-form" class="form-grid">
+        <input type="number" id="process-data-type-upd-id" placeholder="Process Data Type No" required />
+        <input type="text" id="process-data-type-upd-description" placeholder="New description" required />
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="process-definitions" class="panel">
+      <h2>Process Definitions</h2>
+      <form id="process-definition-form" class="form-grid">
+        <input type="number" id="pd-process-type-no" placeholder="Process Type No" required />
+        <input type="text" id="pd-version" placeholder="Version" required />
+        <label class="checkbox">
+          <input type="checkbox" id="pd-is-active" /> Active
+        </label>
+        <input type="text" id="pd-start-task-description" placeholder="Start Task Description" required />
+        <button type="submit">Create Process Definition</button>
+      </form>
+      <div class="list" id="process-definition-list"></div>
+
+      <h3>Retrieve Process Definition</h3>
+      <form id="process-definition-get-form" class="form-grid">
+        <input type="number" id="process-definition-id" placeholder="Process Definition No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="process-definition-detail" class="list"></div>
+
+      <h3>Update Process Definition</h3>
+      <form id="process-definition-update-form" class="form-grid">
+        <input type="number" id="pd-upd-id" placeholder="Process Definition No" required />
+        <input type="number" id="pd-upd-process-type-no" placeholder="Process Type No (optional)" />
+        <input type="number" id="pd-upd-start-task-no" placeholder="Start Task No (optional)" />
+        <input type="text" id="pd-upd-version" placeholder="Version (optional)" />
+        <label class="checkbox">
+          <input type="checkbox" id="pd-upd-is-active" /> Active (check to set true, leave unchecked to ignore)
+        </label>
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="tasks" class="panel">
+      <h2>Tasks</h2>
+      <form id="task-form" class="form-grid">
+        <input type="number" id="task-process-definition-no" placeholder="Process Definition No" required />
+        <input type="text" id="task-description" placeholder="Description" required />
+        <input type="text" id="task-reference" placeholder="Reference (optional)" />
+        <button type="submit">Create Task</button>
+      </form>
+      <div class="list" id="task-list"></div>
+      <h3>Retrieve Task</h3>
+      <form id="task-get-form" class="form-grid">
+        <input type="number" id="task-id" placeholder="Task No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="task-detail" class="list"></div>
+      <h3>Update Task</h3>
+      <form id="task-update-form" class="form-grid">
+        <input type="number" id="task-upd-id" placeholder="Task No" required />
+        <input type="number" id="task-upd-process-definition-no" placeholder="Process Definition No (optional)" />
+        <input type="text" id="task-upd-description" placeholder="Description (optional)" />
+        <input type="text" id="task-upd-reference" placeholder="Reference (optional)" />
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="task-rules" class="panel">
+      <h2>Task Rules</h2>
+      <form id="task-rule-form" class="form-grid">
+        <input type="number" id="tr-taskno" placeholder="Task No" required />
+        <input type="text" id="tr-rule" placeholder="Rule (e.g., default or procdata.dtype.field == 'value')" required />
+        <input type="number" id="tr-next-task-no" placeholder="Next Task No (optional)" />
+        <button type="submit">Create Task Rule</button>
+      </form>
+      <div class="list" id="task-rule-list"></div>
+      <h3>Retrieve Task Rule</h3>
+      <form id="task-rule-get-form" class="form-grid">
+        <input type="number" id="tr-get-id" placeholder="Task Rule No" required />
+        <button type="submit">Get</button>
+      </form>
+      <div id="task-rule-detail" class="list"></div>
+      <h3>Update Task Rule</h3>
+      <form id="task-rule-update-form" class="form-grid">
+        <input type="number" id="tr-upd-id" placeholder="Task Rule No" required />
+        <input type="text" id="tr-upd-rule" placeholder="New rule (optional)" />
+        <input type="number" id="tr-upd-next-task-no" placeholder="Next Task No (optional)" />
+        <button type="submit">Update</button>
+      </form>
+    </section>
+
+    <section id="user-portal" class="panel">
+      <h2>User Portal</h2>
+
+      <h3>Search Case</h3>
+      <form id="user-search-form" class="form-grid">
+        <input type="text" id="user-search-query" placeholder="Enter Case No or Client ID" required />
+        <button type="submit">Search</button>
+      </form>
+      <div id="user-search-results" class="list"></div>
+
+      <h3>Create Case</h3>
+      <form id="user-create-case-form" class="form-grid">
+        <select id="user-process-type-no" required>
+          <option value="">Select Process Type</option>
+        </select>
+        <input type="text" id="user-client-id" placeholder="Client ID" required />
+        <input type="text" id="user-client-type" placeholder="Client Type" required />
+        <button type="submit">Create Case</button>
+      </form>
+
+      <div id="user-current" class="list"></div>
+
+      <h3>Case Steps</h3>
+      <div id="user-steps-list" class="list"></div>
+
+      <h3>Case Process Data</h3>
+      <div id="user-procdata-list" class="list"></div>
+
+      <h3>Edit Process Data</h3>
+      <form id="user-procdata-edit-form" class="form-grid">
+        <input type="hidden" id="user-pd-edit-id" />
+        <select id="user-pd-edit-type" required>
+          <option value="">Select Process Data Type</option>
+        </select>
+        <input type="text" id="user-pd-edit-field" placeholder="Field name" required />
+        <input type="text" id="user-pd-edit-value" placeholder="Value" required />
+        <button type="submit">Update Data</button>
+      </form>
+
+      <h3>Add Process Data</h3>
+      <form id="user-procdata-form" class="form-grid">
+        <select id="user-pd-type" required>
+          <option value="">Select Process Data Type</option>
+        </select>
+        <input type="text" id="user-pd-field" placeholder="Field name" required />
+        <input type="text" id="user-pd-value" placeholder="Value" required />
+        <button type="submit">Add Data</button>
+      </form>
+      <div id="user-procdata-edit-info" class="hint"></div>
+
+      <button id="user-done-btn" class="primary">Done</button>
+    </section>
+
+    <section class="panel">
+      <div id="messages"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -44,7 +44,8 @@ def register_user(req: RegisterRequest, db: Session = Depends(get_db), current_u
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
 
-    creator = current_user.username if current_user is not None else ("bootstrap" if total == 0 else "self-signup")
+    # usrid is the logged-in username if present, otherwise "system"
+    creator = current_user.username if current_user is not None else "system"
     created = users_dao.create_user(db, req.username, req.password, role, creator)
     return UserResponse(id=created.id, username=created.username, role=created.role)
 

@@ -1,0 +1,111 @@
+Workflow Framework
+
+Process of the workflow
+
+
+A case will be created 
+A case will have a process
+A process will be of a certain type (process type)
+A process will have status
+A process will also have steps
+Steps will have status 
+Steps will have also have tasks linked to them
+Tasks will be linked to process definitions
+
+Process definitions are linked to Process types
+
+Process will also have process data 
+Process data will be liked to process data type
+
+Some additional requirements
+
+An Admin needs to be able to add tasks, process definitions, Process Type and processdata type
+User should be able to create a case number by choosing which process type the process type and provide information about the case 
+And the system needs to create process record linking case number and process type giving status busy
+And creating step linking to the created process and the start task no in process definition to task no field in task and giving and status busy
+For the step to be closed we need to check the task rule if the rule is satisfied then create a new with the task no in the next step task no column 
+
+
+
+Workflow framework db structure
+Case 
+Caseno
+Client_Id
+Client_type
+Date created
+Tmstamp
+Usrid
+
+
+Process
+Processno
+Case_no
+Status no
+Process type_no
+Date started
+Date Ended
+Tmstamp
+Usrid
+	
+Step
+Stepno
+Processno
+Taskno
+Status no
+Date started
+Date Ended
+Tmstamp
+Usrid
+
+Task
+Taskno
+Process definition_no
+Description
+Reference
+Tmstamp
+Usrid
+
+TaskRule
+Taskno
+Rule
+Next task no
+Tmstamp
+Usrid
+
+
+Process Definition
+Process Definition_no
+Process type
+Start Task no
+Version 
+IsActive
+Tmstamp
+Usrid
+
+Process Type
+Process type_no
+Description
+Tmstamp
+Usrid
+
+
+Status
+Status no
+Description
+Tmstamp
+Usrid
+
+Process Data
+Process data_ no
+Process no
+Process data type no
+Fieldname
+Value
+Tmstamp
+Usrid
+
+Process Data type 
+Process data type no
+Description
+Tmstamp
+Usrid

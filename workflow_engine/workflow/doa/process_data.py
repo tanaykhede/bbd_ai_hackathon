@@ -18,3 +18,37 @@ def list_process_data_for_user_cases(db: Session, usrid: str) -> list[models.Pro
         .filter(models.Case.usrid == usrid)
         .all()
     )
+
+def list_process_data_for_case(db: Session, case_no: int) -> list[models.ProcessData]:
+    # All process data for a given case (admin scope)
+    return (
+        db.query(models.ProcessData)
+        .join(models.Process, models.ProcessData.processno == models.Process.processno)
+        .filter(models.Process.case_no == case_no)
+        .all()
+    )
+
+def list_process_data_for_case_and_user(db: Session, case_no: int, usrid: str) -> list[models.ProcessData]:
+    # Process data for a given case limited to the requesting user (non-admin scope)
+    return (
+        db.query(models.ProcessData)
+        .join(models.Process, models.ProcessData.processno == models.Process.processno)
+        .join(models.Case, models.Process.case_no == models.Case.caseno)
+        .filter(models.Process.case_no == case_no, models.Case.usrid == usrid)
+        .all()
+    )
+
+def update_process_data(db: Session, process_data_no: int, payload: schemas.ProcessDataUpdate, usrid: str) -> models.ProcessData:
+    pd = db.query(models.ProcessData).filter(models.ProcessData.process_data_no == process_data_no).first()
+    if not pd:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Process data not found")
+    if payload.process_data_type_no is not None:
+        pd.process_data_type_no = payload.process_data_type_no
+    if payload.fieldname is not None:
+        pd.fieldname = payload.fieldname
+    if payload.value is not None:
+        pd.value = payload.value
+    # update audit user
+    pd.usrid = usrid
+    return save(db, pd)

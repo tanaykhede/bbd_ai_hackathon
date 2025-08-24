@@ -17,7 +17,9 @@ def list_all_cases(db: Session) -> list[models.Case]:
 
 def create_case(db: Session, case: schemas.CaseCreate, process_type_no: int, usrid: str) -> models.Case:
     # Create Case
-    db_case = save(db, models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid))
+    db_case = models.Case(client_id=case.client_id, client_type=case.client_type, usrid=usrid)
+    db.add(db_case)
+    db.flush()  # assign caseno
 
     # Get Process Definition
     process_definition = db.query(models.ProcessDefinition).filter(
@@ -25,32 +27,38 @@ def create_case(db: Session, case: schemas.CaseCreate, process_type_no: int, usr
         models.ProcessDefinition.is_active == True
     ).first()
     if not process_definition:
+        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Active process definition for this type not found")
 
     # Resolve 'busy' status from the Status table
     busy_status = db.query(models.Status).filter(models.Status.description.ilike("busy")).first()
     if not busy_status:
+        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="Required status 'busy' not configured")
     busy_status_no = busy_status.statusno
 
-    # Create Process via DAO
-    db_process = processes_dao.create_process(
-        db,
-        schemas.ProcessCreate(
-            case_no=db_case.caseno,
-            status_no=busy_status_no,
-            process_type_no=process_type_no,
-        ),
-        usrid,
+    # Create Process
+    db_process = models.Process(
+        case_no=db_case.caseno,
+        status_no=busy_status_no,
+        process_type_no=process_type_no,
+        usrid=usrid,
     )
+    db.add(db_process)
+    db.flush()  # assign processno
 
-    # Create Initial Step via DAO
-    steps_dao.create_step(
-        db=db,
+    # Create Initial Step
+    initial_step = models.Step(
         processno=db_process.processno,
         taskno=process_definition.start_task_no,
         status_no=busy_status_no,
         usrid=usrid,
     )
+    db.add(initial_step)
 
+    # Commit once to keep the whole operation atomic
+    db.commit()
+
+    # Refresh and return created case after commit
+    db.refresh(db_case)
     return db_case
